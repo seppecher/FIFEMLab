@@ -14,6 +14,11 @@ It is fully object oriented in order to make the code as clear as possible. It h
 
 It requires the Matlab pde toolbox and (for some fonctionnality) the image processing toolbox. 
 
+## Documentation
+doc_domain.mlx explains how to simply defines Domain objects.
+doc_mesh.mlx explains ho to build and use a Mesh object from a Domain object.
+
+
 
 
 ## Visuals
