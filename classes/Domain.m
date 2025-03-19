@@ -4,6 +4,7 @@ classdef Domain
         nodes
         edges
         poly
+        area
     end
 
     methods (Access = public)
@@ -22,11 +23,11 @@ classdef Domain
             % domain = Domain(nodes,edges) where nodes is a Nx2 matrix of N
             % nodes positions and edges is a Px1 cell defining the domain
             % boundary edges.
+            
 
             % Default domain
             if nargin == 0
-                obj.nodes  = [0 0 ; 1 0 ; 1 1 ; 0 1];
-                obj.edges = {{1,2};{2,3};{3,4};{4,1}};
+                obj = Domain([0 0 ; 1 0 ; 1 1 ; 0 1]);
                 return
             end
 
@@ -124,10 +125,9 @@ classdef Domain
                 obj.nodes = nodes;
                 obj.edges = edges;
                 obj.poly = obj.build_poly;
+                obj.area = area(obj.poly);
                 obj = obj.check_structure;
                 return
-
-
             end
 
 
@@ -155,9 +155,8 @@ classdef Domain
                 end
                 obj.edges = C;
                 obj.poly = obj.build_poly;
+                obj.area = area(obj.poly);
                 obj = obj.check_structure;
-
-
 
 
             else
@@ -167,23 +166,23 @@ classdef Domain
         end
 
         function disp(obj)
-            % DOMAIN.DISP: display informations contained in the Domain
+            % DISP method: display informations contained in the Domain
             % object.
             disp('Domain object')
+            disp(['area = ' num2str(obj.area)]);
 
             Ne = size(obj.edges,1);
             if Ne <= 50 % Full description
 
 
 
-                disp(['Nodes (' num2str(size(obj.nodes,1)) '):']);
+                disp(['nodes (' num2str(size(obj.nodes,1)) '):']);
                 disp(obj.nodes)
-                disp(['Edges (' num2str(Ne) '):']);
+                disp(['edges (' num2str(Ne) '):']);
 
                 for i = 1 : Ne
                     edge = obj.edges(i,:);
                     type = edge{3};
-                    param = edge{4};
                     side = edge{5};
                     a = num2str(edge{1});
                     b = num2str(edge{2});
@@ -275,10 +274,54 @@ classdef Domain
             hold off
 
         end
+        
+        function [M,Ibound]=geometry_matrix(obj,h)
+            % GEOMTRY_MATRIX method: build the geometry matrix of the
+            % domain. This matrix is needed to create a Mesh object form
+            % this domain. Use: 
+            %
+            % [M,Ibound] = obj.MATRIX(h) compile the data contained in the Domain
+            % object in a matrix M to be used by initmesh. Ibound contains
+            % the indices of the i of boundary edges.
 
+            E = obj.edges;
+            M = [];
+            Ibound = [];
+            for i = 1 : size(E,1)
+                edge = E(i,:);
+                type = edge{3};
+                side = edge{5};
+
+                switch type
+                    case 'straight'
+                        I = [edge{1} edge{2}];
+                        x = obj.nodes(I,1);
+                        y = obj.nodes(I,2);
+                        [x,y] = obj.discretize_edge(edge,h,inf);
+                    case 'param'
+                        [x,y] = obj.discretize_edge(edge,h,inf);
+
+                end
+                x = x';
+                y = y';
+                N = length(x);
+                switch side
+                    case 'L'
+                        sideM = [ones(1,N-1) ; zeros(1,N-1)];
+                    case 'R'
+                        sideM = [zeros(1,N-1) ; ones(1,N-1)];
+                    case 'LR'
+                        sideM = ones(2,N-1);
+                end
+                m = [2*ones(1,N-1) ; x(1:end-1) ; x(2:end) ;  y(1:end-1) ; y(2:end) ; sideM ; zeros(5,N-1)];
+                M = [M m];
+                Ibound = [Ibound ; i*ones(N-1,1)];
+            end
+
+        end
     end
 
-    methods (Access = public) % need Private !
+    methods (Access = private) % need Private !
 
         function obj = check_structure(obj)
             % Check the domain structure
@@ -410,7 +453,7 @@ classdef Domain
         function [x,y] = discretize_edge(obj,edge,dx,Ndis)
             type = edge{3};
             param = edge{4};
-            interval = param.interval;
+            
 
             switch type
                 case 'straight'
@@ -421,10 +464,16 @@ classdef Domain
                     N = min(N,Ndis);
                     x = linspace(x1(1),x2(1),N)';
                     y = linspace(x1(2),x2(2),N)';
+
+                   
                     return
                 case 'param'
+                    interval = param.interval;
                     tmin = interval(1);
                     tmax = interval(2);
+                    if Ndis == inf
+                        Ndis = 256;
+                    end
                     t = linspace(tmin,tmax,Ndis)';
                     [teq,L,x,y] = iterative_equalizer(t,param);
                     if dx
@@ -597,7 +646,6 @@ while max(L)/min(L) > 1 + 1e-3
     end
 end
 end
-
 
 function teq = equalizer(t,x,y)
 N = length(t);
