@@ -131,6 +131,7 @@ axis off
 ![figure_3.png](doc_domain_media/figure_3.png)
 
 
+
 ### **2. Domains with curved edges**
 
 You may use a parametric description of each curved edge using either a handle function of some expressions defining the parametric curve $t\mapsto \left(x\left(t\right),y\left(t\right)\right)$ depending on the parameter t . Always give the curve in trigonometric sense. 
@@ -293,8 +294,6 @@ domain.plot('edgelabels');
 
 ![figure_9.png](doc_domain_media/figure_9.png)
 
-
-
 **Circular domain with a singular hole**
 
 ```matlab
@@ -383,7 +382,6 @@ axis off;
 ```
 
 ![figure_13.png](doc_domain_media/figure_13.png)
-
 
 
 ### 5. Domain from a binary image
