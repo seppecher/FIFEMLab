@@ -3,10 +3,10 @@
 **Forward and Inverse Finite Element Laboratory**
 
 ## Description
-FIFEMLab provides user friendly Matlab tools for solving PDEs in dimension 2 with the Finite Element method and for soving inverse parameters problems. It focuses on 
+FIFEMLab provides user friendly Matlab tools for solving PDEs in dimension 2 with the Finite Element method and for soving inverse parameters problems. It helps to 
 
-1. Simple definintion of various 2D domains (stable)
-2. Generetate and manipulate triangular meshes (ongoing work)
+1. Simply define of various 2D domains (stable)
+2. Generate and manipulate triangular meshes (ongoing work)
 3. Solve classical scalar and vectorial PDEs and manipulate their solutions (ongoing work)
 4. Solve some inverse parameters problems (ongoing work)
 
@@ -16,9 +16,11 @@ It requires the Matlab pde toolbox and (for some fonctionnality) the image proce
 
 ## Documentation
 
-[Domain docomentation](https://github.com/seppecher/FIFEMLab/blob/main/documentation/doc_domain.md) explains how to simply defines Domain objects.
+[Domain documentation](https://github.com/seppecher/FIFEMLab/blob/main/documentation/doc_domain.md) explains how to simply defines Domain objects. You may run doc_domain.mlx.
 
-doc_mesh.mlx explains ho to build and use a Mesh object from a Domain object.
+[Mesh documentation](https://github.com/seppecher/FIFEMLab/blob/main/documentation/mesh_domain.md) explains how to simply defines Domain objects. You may run mesh_domain.mlx.
+
+
 
 
 ## Visuals

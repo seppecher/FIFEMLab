@@ -39,11 +39,14 @@ classdef Mesh < handle
                 obj = Mesh(domain,h);
                 return
             end
+            
+             h = varargin{2};
 
-            if nargin ~=2 
-                error('Wrong input argument. Mesh needs at least two inputs and last input must be positive number.');
+            if nargin == 3
+                h_bound = varargin{3};
+            else 
+                h_bound = h;
             end
-
 
 
             % General constructor
@@ -54,32 +57,22 @@ classdef Mesh < handle
             Nt_exp = floor(1.5*2.31*arg1.area/h^2);
 
             % Big mesh alert 
-            if Nt_exp > 50000
-                
+            if Nt_exp > 100000  
                 warning(['Approximately ' num2str(1e3*floor(Nt_exp/1000)) ' triangles will be generated.']);
-                domain_test = Domain('square');
-                h_test = 0.02;
-                [gm,~] = domain_test.geometry_matrix(h_test);
-                tic;
-                [p,e,t] = initmesh(gm,'Hmax',h_test,'Hgrad',1.5,'Jiggle','mean','JiggleIter',20);
-                Nt_test = floor(1.5*2.31*domain_test.area/h_test^2);
-                time_test = toc;
-                time_exp = time_test*(Nt_exp/Nt_test)^(7/4);
-                fprintf(['expected building time: ' num2str(ceil(time_exp)) ' seconds']);
                 fprintf('\n');
             end
 
 
 
             tic;
-            [gm,Ibound] = arg1.geometry_matrix(h);
+            [gm,Ibound,domain] = arg1.geometry_matrix(h_bound);
             warning('off');
-            [p,e,t]=initmesh(gm,'Hmax',h,'Hgrad',1.5,'Jiggle','mean','JiggleIter',20);
+            [p,e,t]=initmesh(gm,'Hmax',h,'Hgrad',1.5,'Jiggle','mean','JiggleIter',20,'MesherVersion','R2013a');
             warning('on');
             e=e';
             e = [e(:,[1 2]) Ibound(e(:,5))];
             obj.h_input = h;
-            obj.domain = arg1;
+            obj.domain = domain;
             obj.nodes = p';
             obj.edges = e;
             obj.triangles = t(1:3,:)';

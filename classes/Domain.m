@@ -1,6 +1,6 @@
 classdef Domain
 
-    properties (SetAccess = private)
+    properties %(SetAccess = private)
         nodes
         edges
         poly
@@ -275,7 +275,32 @@ classdef Domain
 
         end
         
-        function [M,Ibound]=geometry_matrix(obj,h)
+        function [c,obj2] = simplify(obj,h)
+            obj2 = obj;
+            E = obj.edges;
+            E2 = {};
+            c = 0;
+            for i = 1 : size(E,1)
+                edge = E(i,:);
+                [x,y] = obj.discretize_edge(edge,h,inf);
+                N = length(x);
+                if N <= 3 && edge{1} == edge{2}
+                    c = c + 1;
+                else
+                    E2 = [E2 ; edge];
+                end
+            end
+            if c
+                disp(['warning: ' num2str(c) ' small holes or inclusions have been deleted'])
+                disp(['try Mesh(domain,h,h_bound) with a smaller h_bound value'])
+
+                obj2.edges = E2;
+            end
+
+        end
+        
+
+        function [M,Ibound,obj] = geometry_matrix(obj,h)
             % GEOMTRY_MATRIX method: build the geometry matrix of the
             % domain. This matrix is needed to create a Mesh object form
             % this domain. Use: 
@@ -284,27 +309,23 @@ classdef Domain
             % object in a matrix M to be used by initmesh. Ibound contains
             % the indices of the i of boundary edges.
 
+            [c,obj2] = simplify(obj,h);
+
+            if c
+                obj = obj2;
+            end
+
             E = obj.edges;
             M = [];
             Ibound = [];
             for i = 1 : size(E,1)
                 edge = E(i,:);
-                type = edge{3};
                 side = edge{5};
-
-                switch type
-                    case 'straight'
-                        I = [edge{1} edge{2}];
-                        x = obj.nodes(I,1);
-                        y = obj.nodes(I,2);
-                        [x,y] = obj.discretize_edge(edge,h,inf);
-                    case 'param'
-                        [x,y] = obj.discretize_edge(edge,h,inf);
-
-                end
+                [x,y] = obj.discretize_edge(edge,h,inf);
                 x = x';
                 y = y';
                 N = length(x);
+                if N>3 
                 switch side
                     case 'L'
                         sideM = [ones(1,N-1) ; zeros(1,N-1)];
@@ -316,6 +337,8 @@ classdef Domain
                 m = [2*ones(1,N-1) ; x(1:end-1) ; x(2:end) ;  y(1:end-1) ; y(2:end) ; sideM ; zeros(5,N-1)];
                 M = [M m];
                 Ibound = [Ibound ; i*ones(N-1,1)];
+                end
+
             end
 
         end
@@ -450,23 +473,19 @@ classdef Domain
             end
         end
 
-        function [x,y] = discretize_edge(obj,edge,dx,Ndis)
+        function [x,y] = discretize_edge(obj,edge,h,Ndis)
             type = edge{3};
             param = edge{4};
             
-
             switch type
                 case 'straight'
                     x1 = obj.nodes(edge{1},:);
                     x2 = obj.nodes(edge{2},:);
                     l = sqrt((x2(1)-x1(1)).^2 + (x2(2)-x1(2)).^2);
-                    N = max(floor(l/dx)+1,2);
+                    N = max(floor(l/h)+1,2);
                     N = min(N,Ndis);
                     x = linspace(x1(1),x2(1),N)';
                     y = linspace(x1(2),x2(2),N)';
-
-                   
-                    return
                 case 'param'
                     interval = param.interval;
                     tmin = interval(1);
@@ -476,13 +495,21 @@ classdef Domain
                     end
                     t = linspace(tmin,tmax,Ndis)';
                     [teq,L,x,y] = iterative_equalizer(t,param);
-                    if dx
+                    if h
                         l = sum(L);
-                        N = 1 + ceil(l/dx);
+                        N = 1 + ceil(l/h);
                         teq = interp1(t,teq,linspace(tmin,tmax,N)');
                         [teq,L,x,y] = iterative_equalizer(teq,param);
                     end
-                    return
+                case 'data'
+                    x = param(:,1);
+                    y = param(:,2);
+                    L = sqrt(diff(x).^2+diff(y).^2);
+                    if min(L)<h
+                        p = under_sample2(param,h);
+                        x = p(:,1);
+                        y = p(:,2);
+                    end
             end
 
         end
@@ -693,4 +720,38 @@ end
 
 ph(1,:) = (ph(1,:) + ph(end,:))/2;
 ph = ph(1:end-1,:);
+end
+
+function ph = under_sample2(p,h)
+N = size(p,1);
+ph = p(1,:);
+x = p(1,:);
+d = 0;
+n = 1;
+while n<N
+    while d<h && n<N
+        n = n + 1;
+        z = p(n,:);
+        d = norm(x - z);
+    end
+    if n == N
+        if d<h/2
+        ph = [ph(1:end-1,:); p(n,:)];
+        else
+            ph = [ph ; p(n,:)];
+        end
+
+    else
+        y = p(n-1,:);
+        v = (z - y)/norm(z - y);
+        px = y + ((x - y)*v')*v;
+        alpha = sqrt(h^2 - norm(px - x)^2);
+        x_new = px + alpha*v;
+        ph = [ph ; x_new];
+        x = x_new;
+        d = 0;
+    end
+end
+
+
 end
