@@ -18,7 +18,7 @@ It requires the Matlab pde toolbox and (for some fonctionnality) the image proce
 
 [Domain documentation](https://github.com/seppecher/FIFEMLab/blob/main/documentation/doc_domain.md) explains how to simply defines Domain objects. You may run doc_domain.mlx.
 
-[Mesh documentation](https://github.com/seppecher/FIFEMLab/blob/main/documentation/mesh_domain.md) explains how to simply defines Domain objects. You may run mesh_domain.mlx.
+[Mesh documentation](https://github.com/seppecher/FIFEMLab/blob/main/documentation/doc_mesh.md) explains how to simply defines Domain objects. You may run doc_mesh.mlx.
 
 
 
