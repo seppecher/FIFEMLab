@@ -19,7 +19,7 @@ Mesh object
  
 &emsp;[**2. Example of meshes**](#-textbf-2-example-of-meshes-)
  
-&emsp;[5. Mesh from a binary image](#5-mesh-from-a-binary-image)
+&emsp;[3. Mesh from a binary image](#3-mesh-from-a-binary-image)
  
 <a name="endToc"></a>
 
@@ -433,7 +433,7 @@ mesh.plot;
 
 ![figure_13.png](doc_mesh_media/figure_13.png)
 
-# 5. Mesh from a binary image
+# 3. Mesh from a binary image
 
 First get a binary image of your domain:
 
@@ -472,7 +472,6 @@ mesh.plot;
 
 ![figure_15.png](doc_mesh_media/figure_15.png)
 
-
 You can now create very complex domains such as the mediteranean sea with the main islands (undock the picture to see the details).
 
 ```matlab
@@ -505,5 +504,3 @@ mesh.plot;
 ```
 
 ![figure_18.png](doc_mesh_media/figure_18.png)
-
-
