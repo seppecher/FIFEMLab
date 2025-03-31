@@ -4,13 +4,16 @@
 Mesh object 
 
 
- Standard construction :
+ Standard construction:
 
 
  **mesh = Mesh(domain,h)** where domain is a Domain object and h is the requested mesh resolution. 
 
 
  **mesh = Mesh(domain,h,h\_bound)** where h\_bound is the requested mesh resolution at the bounary. 
+
+
+ **mesh = Mesh(domain,h,'save')** allows to save large meshes if it is large or load it if previousely saved. 
 
 <a name="beginToc"></a>
 
@@ -20,6 +23,8 @@ Mesh object
 &emsp;[**2. Example of meshes**](#-textbf-2-example-of-meshes-)
  
 &emsp;[3. Mesh from a binary image](#3-mesh-from-a-binary-image)
+ 
+&emsp;[4. The 'save' option](#4-the-save-option)
  
 <a name="endToc"></a>
 
@@ -39,6 +44,7 @@ mesh = Mesh(domain,0.1);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -49,14 +55,20 @@ mesh.disp;
 ```
 
 ```matlabTextOutput
-  Mesh with properties:
-
-           domain: [1x1 Domain]
-          h_input: 0.1000
-            nodes: [175x2 double]
-            edges: [40x3 double]
-        triangles: [308x3 double]
-    building_time: 0.0795
+Mesh object
+nodes :           175
+triangles :       308
+h (input) :       0.1
+h_bound (input) : 0.1
+min edge size :   0.050061
+max edge size :   0.12176
+mean edge size :  0.086953
+edge size std :   0.013321
+min quality :     0.71517
+mean quality :    0.9665
+memory (kB) :     103
+Build time (s) :  0.19
+ 
 ```
 
 ```matlab
@@ -117,6 +129,7 @@ mesh = Mesh(domain,h,h_bound);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -131,11 +144,13 @@ mesh.plot;
 **Disc**
 
 ```matlab
-mesh = Mesh('disc',3,0.5);
+domain = Domain('disc',3);
+mesh = Mesh(domain,0.5);
 ```
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -156,6 +171,7 @@ mesh = Mesh(domain,0.1);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -182,6 +198,7 @@ mesh = Mesh(domain,0.1);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -210,6 +227,7 @@ mesh = Mesh(domain,0.2);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -237,6 +255,7 @@ mesh = Mesh(domain,0.05);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -264,6 +283,7 @@ mesh = Mesh(domain,0.1);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -289,6 +309,7 @@ mesh = Mesh(domain,0.05);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -319,6 +340,7 @@ mesh = Mesh(domain,0.1);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -345,6 +367,7 @@ mesh = Mesh(domain,0.2);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -368,6 +391,7 @@ mesh = Mesh(domain,0.2);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -396,6 +420,7 @@ mesh = Mesh(domain,0.1);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -424,6 +449,7 @@ mesh = Mesh(domain,0.1);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -463,6 +489,7 @@ mesh = Mesh(domain,0.02);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -496,6 +523,7 @@ mesh = Mesh(domain,0.1,0.002);
 
 ```matlabTextOutput
 building mesh
+building mesh properties
 done
 ```
 
@@ -504,3 +532,76 @@ mesh.plot;
 ```
 
 ![figure_18.png](doc_mesh_media/figure_18.png)
+
+```matlab
+mesh.disp;
+```
+
+```matlabTextOutput
+Mesh object
+nodes :           14479
+triangles :       25916
+h (input) :       0.1
+h_bound (input) : 0.002
+min edge size :   0.00060147
+max edge size :   0.072231
+mean edge size :  0.0079473
+edge size std :   0.0063625
+min quality :     0.26936
+mean quality :    0.9479
+memory (kB) :     8513
+Build time (s) :  3.17
+ 
+```
+
+# 4. The 'save' option
+
+For large meshes (more than 20k triangles), use the 'save' option to save it and load it in subsequent calls. This higly reduce the running time of your script. 
+
+
+Here is an example: 
+
+```matlab
+domain = Domain('square');
+tic;
+mesh = Mesh(domain,0.005);
+```
+
+```matlabTextOutput
+building mesh
+Warning: Approximately 80000 triangles will be generated.
+building mesh properties
+done
+```
+
+```matlab
+toc
+```
+
+```matlabTextOutput
+Elapsed time is 7.876267 seconds.
+```
+
+This mesh is long to build. Use instead:
+
+```matlab
+tic;
+mesh = Mesh(domain,0.005,'save');
+```
+
+```matlabTextOutput
+looking for existing mesh
+mesh found
+load saved_meshes/mesh2.mat
+```
+
+```matlab
+toc
+```
+
+```matlabTextOutput
+Elapsed time is 0.378906 seconds.
+```
+
+First call saves the mesh in *saved\_meshes* directory. All subsequent calls just load it. 
+

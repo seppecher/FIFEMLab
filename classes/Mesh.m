@@ -1,89 +1,190 @@
 classdef Mesh < handle
     properties (SetAccess = private)
-        domain
-        h_input
-        nodes
-        edges
-        triangles
-        building_time
+        domain              % Domain object from which the mesh is built
+
+        h_input             % Requried mesh resolution
+        h_bound_input       % Requried mesh resolution at boundary               
+        
+        nodes               % Node positions of the mesh
+        triangles           % Triangles data given as Nx3 index matrix 
+        boundary_edges      % Edges at the boundary of the mesh  
+        centers             % Barycenters of the triangles
+
+        I_boundary_nodes    % Indices of boundary nodes
+        I_interior_nodes    % Indices of interior nodes
+
+        Nnodes              % Number of nodes
+        Ntriangles          % Number of triangles
+        Nboundary_edges     % Number of boundary edges
+
+        h_min               % Min edge size
+        h_mean              % Mean edge size
+        h_max               % Max edge size
+        h_std               % Santard deviation of edge sizes
+
+        q_min               % Min quality of the mesh
+        q_mean              % Mean quality of the mesh
+
+        K                   % Default stiffness matrix
+           
+        building_time       % Time used to build the mesh
+        memory              % Memory used to store the mesh
+
+        
+
+    end
+    properties (Access = public) % Needs private
+       int1
+       intx
+       intxx
+       P1_basis
     end
     methods (Access = public)
 
         % Constructor
         function obj = Mesh(varargin)
-
+            % MESH object constuctor
+            %
+            % A MESH object contains a triangular mesh of a 2D domain. The
+            % constructor requires the Matlab pde_toolbox. The mesher
+            % algorithm is the R2013a MesherVersion of the function
+            % initmesh.
+            %
+            % mesh = Mesh(domain,h) creates a triangular mesh of target
+            % maximum resolution h.
+            %
+            % mesh = Mesh(domain,h,h_bound) creates a mesh of target max
+            % resolution h and boundary mesh resolution h_bound.
+            %
+            % mesh = Mesh(domain,h,'save') or mesh = Mesh(domain,h,h_bound,'save') 
+            % allows to save the large meshes and load them if previously 
+            % saved.
+            % 
+            % Documentation: doc_mesh.mlx or doc_mesh.md.
 
             % PDEtoolbox check
             if ~license('test','pde_toolbox')
                 error('Mesh class needs the pde_toolbox to be installed.')
             end
 
-            % Default Mesh
-            if nargin == 0
-                domain = Domain;
-                obj = Mesh(domain,0.1);
-                return
-            end
-            
-            % Check correct input
-            if nargin == 1 || ~isnumeric(varargin{end})
-                error('Wrong input argument. Mesh needs at least two inputs and last input must be positive number.');
-            end
 
-            arg1 = varargin{1};
-            h = varargin{end};
-
-            % Shortcut the domain constuction
-            if ~isa(arg1,'Domain')
-                domain = Domain(varargin{1:end-1});
-                obj = Mesh(domain,h);
-                return
-            end
-            
-             h = varargin{2};
-
-            if nargin == 3
-                h_bound = varargin{3};
-            else 
-                h_bound = h;
-            end
-
-
-            % General constructor
-            fprintf('building mesh');
-            fprintf('\n');
-
-            % Check approximate mesh size
-            Nt_exp = floor(1.5*2.31*arg1.area/h^2);
-
-            % Big mesh alert 
-            if Nt_exp > 100000  
-                warning(['Approximately ' num2str(1e3*floor(Nt_exp/1000)) ' triangles will be generated.']);
-                fprintf('\n');
+            opt_save = false;
+            switch nargin
+                case 0
+                    domain = Domain;
+                    obj = Mesh(domain,0.1);
+                    return
+                case 1
+                    error('Wrong input argument. Mesh needs at least two inputs and last input must be positive number.');
+                case 2
+                    domain = varargin{1};
+                    h = varargin{2};
+                    h_bound = h;
+                case 3
+                    domain = varargin{1};
+                    h = varargin{2};
+                    if ischar(varargin{3}) && strcmp(varargin{3},'save')
+                        opt_save = true;
+                        h_bound = h;
+                    else
+                        h_bound = varargin{3};
+                    end
+                case 4
+                    domain = varargin{1};
+                    h = varargin{2};
+                    h_bound = varargin{3};
+                    if ischar(varargin{4}) && strcmp(varargin{4},'save')
+                        opt_save = true;
+                    end
             end
 
 
+             % Check approximate mesh size
+             Nt_exp = floor(1.5*2.31*domain.area/mean([h,h_bound])^2);
 
+            % Procedure if save option is activiated 
+             if Nt_exp >= 20000 && opt_save
+                 if ~exist('saved_meshes','dir')
+                     disp('build saved_meshes directory')
+                     mkdir('saved_meshes');
+                 end
+                 disp('looking for existing mesh')
+                 list = dir('saved_meshes/mesh*.mat');
+                 Nlist = length(list);
+                 for i = 1 : Nlist
+                     meshaddress = ['saved_meshes/' list(i).name];
+                     load(meshaddress,'saved_h','saved_h_bound');
+                     if saved_h == h &&  saved_h_bound == h_bound
+                         load(meshaddress,'saved_domain');
+                         if  saved_domain == domain
+                             disp('mesh found')
+                             disp(['load ' meshaddress]);
+                             load(meshaddress,'saved_mesh');
+                             obj = saved_mesh;
+                             return
+                         end
+                     end
+                 end
+                 disp('mesh not found')
+                 obj = Mesh(domain,h,h_bound);
+                 saved_mesh = obj;
+                 saved_h = h;
+                 saved_h_bound = h_bound;
+                 saved_domain = domain;
+                 name = ['saved_meshes/mesh' num2str(Nlist+1) '.mat' ];
+                 disp('save mesh')
+                 save(name,'saved_mesh','saved_h','saved_h_bound','saved_domain');
+                  disp('done')
+                 return
+             end
+
+            % General mesh constructor
+            disp('building mesh');
             tic;
-            [gm,Ibound,domain] = arg1.geometry_matrix(h_bound);
-            warning('off');
-            [p,e,t]=initmesh(gm,'Hmax',h,'Hgrad',1.5,'Jiggle','mean','JiggleIter',20,'MesherVersion','R2013a');
-            warning('on');
+            [gm,Ibound,domain2] = domain.geometry_matrix(h_bound,true);
+            [p,e,t] = initmesh(gm,'Hmax',h,'Hgrad',1.5,'Jiggle','mean','JiggleIter',20,'MesherVersion','R2013a');
             e=e';
             e = [e(:,[1 2]) Ibound(e(:,5))];
             obj.h_input = h;
-            obj.domain = domain;
+            obj.h_bound_input = h_bound;
+            obj.domain = domain2;
             obj.nodes = p';
-            obj.edges = e;
+            obj.boundary_edges = e;
             obj.triangles = t(1:3,:)';
-            obj.building_time = toc;
+            disp('building mesh properties')
+            mesh_prop_builder(obj);
+            if obj.q_mean<0.9
+                warning('poor mesh mean quality (<0.9).')
+            end
+            obj.building_time = ceil(100*toc)/100;
             fprintf('done');
             fprintf('\n');
-
         end
-
+        
+        % Display and plot
+        function disp(obj)
+            % DISP method of class Mesh.
+            % 
+            % obj.disp displays data of a Mesh object.
+            disp('Mesh object')
+            disp(['nodes :           ' num2str(obj.Nnodes)])
+            disp(['triangles :       ' num2str(obj.Ntriangles)])
+            disp(['h (input) :       ' num2str(obj.h_input)])
+            disp(['h_bound (input) : ' num2str(obj.h_bound_input)])
+            disp(['min edge size :   ' num2str(obj.h_min)])
+            disp(['max edge size :   ' num2str(obj.h_max)])
+            disp(['mean edge size :  ' num2str(obj.h_mean)])
+            disp(['edge size std :   ' num2str(obj.h_std)])
+            disp(['min quality :     ' num2str(obj.q_min)])
+            disp(['mean quality :    ' num2str(obj.q_mean)])
+            disp(['memory (kB) :     ' num2str(obj.memory)])
+            disp(['Build time (s) :  ' num2str(obj.building_time)])
+            disp(' ')
+        end
         function plot(obj,c)
-            % MESH.PLOT obj.PLOT plots the Mesh object.
+            % PLOT method of class Mesh.
+            % 
+            % obj.PLOT plots a Mesh object.
             if nargin == 1
                 c = 'k';
             end
@@ -91,23 +192,356 @@ classdef Mesh < handle
             t = [t ones(size(t,1),1)];
             obj.domain.plot;
             hold on
-            h = pdemesh(obj.nodes',obj.edges',t');
+            h = pdemesh(obj.nodes',obj.boundary_edges',t');
             set(h, 'Color', c);
             set(h, 'LineWidth', 0.4);
             axis equal
             hold off
         end
-
         
+        % Function spaces
+        function u = P0(obj,varargin)
+            Nt = obj.Ntriangles;
+
+            % Defaut P0 function
+            if nargin == 1
+                u = zeros(Nt,1);
+                return
+            end
+
+            order = -1;
+            argin = varargin;
+
+            % Check if the order is specified
+            if nargin >= 3 && strcmp(varargin{end-1},'order')
+                order = varargin{end};
+                argin = varargin(1:end-2);
+            end
+            
+            % Default tensors
+            if isempty(argin)
+                u = zeros(Nt,2^order);
+                return
+            end
+
+            u = obj.eval_P0(argin);
+            u = tensor(u,order);
+        end
+        function b = isP0(obj,u,order)
+            b = true;
+            [Nl,Nc] = size(u);
+            Nt = obj.Ntriangles;
+            if Nl ~= Nt
+                b = false;
+                return
+            end
+            if nargin == 3 && Nc ~= 2^order
+                b = false;
+            end
+        end
+
+        % Finite element matrices
+        function K = stiffness(obj,a)
+            if nargin == 1
+                K = obj.stiffness(obj.P0(1,'order',2));
+                return
+            end
+            if ~obj.isP0(a,2)
+                a = obj.P0(a,'order',2);
+            end
+            
+            Nt = obj.Ntriangles;
+            tri = obj.triangles;
+            tp = tri';         
+            rep3 = floor((3:9*Nt+2)/3);
+            rep9 = floor((9:9*Nt+8)/9);
+            rep33 = 3*(rep9-1)+1 + mod(0:9*Nt-1,3); 
+            Inodes = tp(:);
+            I = Inodes(rep3);
+            J = Inodes(rep33);
+            
+            alphamat = obj.P1_basis(:,[1 2 4 5 7 8]);
+            alpha = reshape(alphamat',2,3*Nt)';
+            alphai = alpha(rep3,:);
+            alphaj = alpha(rep33,:);
+            
+            a = a(rep9,:);
+            
+            i1 = obj.int1(rep9);
+            
+            agej = [a(:,1).*alphaj(:,1) + a(:,2).*alphaj(:,2) a(:,3).*alphaj(:,1) + a(:,4).*alphaj(:,2)];
+            geiagej = i1.*(alphai(:,1).*agej(:,1) + alphai(:,2).*agej(:,2));
+            K = sparse(I,J,geiagej);          
+        end
        
     end
     
-    methods (Access = private)
+    methods (Access = public) % Needs private
+
+        function mesh_prop_builder(obj)
+            p = obj.nodes;
+            e = obj.boundary_edges;
+            t = obj.triangles;
+
+            obj.Nnodes = size(p,1);
+            obj.Ntriangles = size(t,1);
+            obj.Nboundary_edges = size(e,1);
+
+            a = p(t(:,1),:);
+            b = p(t(:,2),:);
+            c = p(t(:,3),:);
+
+            obj.centers = (a + b + c)/3;
         
-      
+            obj.I_boundary_nodes = union(e(:,1),e(:,2));
+            obj.I_interior_nodes = setdiff(1:size(p,1), obj.I_boundary_nodes)';
+            
+            q = pdetriq(p',t');
+            obj.q_mean = mean(q);
+            obj.q_min = min(q);
+
+            v1 = b - a;
+            v2 = c - a;
+            v3 = c - b;
+            
+            d1 = sqrt(v1(:,1).^2 + v1(:,2).^2);
+            d2 = sqrt(v2(:,1).^2 + v2(:,2).^2);
+            d3 = sqrt(v3(:,1).^2 + v3(:,2).^2);
+            d = [d1 ; d2 ; d3];
+
+            [i1,ix,ixx] = obj.integrals;
+            obj.int1 = i1;
+            obj.intx = ix;
+            obj.intxx = ixx;
+            obj.P1_basis = obj.build_basis;
+              
+            obj.h_min = min(d);
+            obj.h_max = max(d);
+            obj.h_mean = mean(d);
+            obj.h_std = std(d);
+            obj.K = obj.stiffness(obj.P0(1,'order',2));
+
+            props = properties(obj);
+            total_mem = 0;
+            for ii=1:length(props)
+                curr_prop = obj.(props{ii});
+                s = whos('curr_prop');
+                total_mem = total_mem + s.bytes;
+            end
+            obj.memory = ceil(total_mem/1024);
+        end
+        function [int1,intx,intxx] = integrals(obj)
+            p = obj.nodes;
+            t = obj.triangles;   
+            a = p(t(:,1),:);
+            b = p(t(:,2),:);
+            c = p(t(:,3),:);
+            u = b - a;
+            v = c - a;
+            d = abs(u(:,1).*v(:,2) - v(:,1).*u(:,2));
+            w = u + v;
+            uu = [u(:,1).*u(:,1) u(:,1).*u(:,2) u(:,2).*u(:,1) u(:,2).*u(:,2)];
+            vv = [v(:,1).*v(:,1) v(:,1).*v(:,2) v(:,2).*v(:,1) v(:,2).*v(:,2)];
+            uv = [u(:,1).*v(:,1) u(:,1).*v(:,2) u(:,2).*v(:,1) u(:,2).*v(:,2)];
+            vu = [v(:,1).*u(:,1) v(:,1).*u(:,2) v(:,2).*u(:,1) v(:,2).*u(:,2)];
+            M = 2*uu + uv + vu + 2*vv;
+            int1 = d/2;
+            intx = [w(:,1).*d  w(:,2).*d]/6;
+            intxx = [M(:,1).*d  M(:,2).*d M(:,3).*d  M(:,4).*d]/24;       
+        end
+        function B = build_basis(obj)
+            p = obj.nodes;
+            t = obj.triangles;
+            u = p(t(:,2),:) - p(t(:,1),:);
+            v = p(t(:,3),:) - p(t(:,1),:);
+            B = zeros(obj.Ntriangles,9);
+            for j = 1 : obj.Ntriangles
+                M = [0 0 1 ; u(j,:) 1 ; v(j,:) 1];
+                N=inv(M);
+                B(j,:)=N(:)';
+            end
+        end
+        function val = eval_P0(obj,varargin)
+            N = obj.Ntriangles;
+            if nargin == 2
+                input = varargin{1};
+                switch class(input)
+                    case 'double'
+                        [Nl,Nc] = size(input);
+                        if Nc == N
+                            input = input';
+                            Nc = Nl;
+                            Nl = N;
+                        end
+                        switch Nl
+                            case 1
+                                val = ones(N,1)*input;
+                                return
+                            case N
+                                val = input;
+                            otherwise
+                                if Nc == 1
+                                     val = ones(N,1)*input';
+                                     return
+                                else
+                                    error('Enable to construct a P0 function: wrong size of input.')
+                                end
+                        end
+                    case 'function_handle'
+                        eps = 0.1;
+                        g = obj.centers;
+                        a = obj.nodes(obj.triangles(:,1),:);
+                        b = obj.nodes(obj.triangles(:,2),:);
+                        c = obj.nodes(obj.triangles(:,3),:);
+                        a_eps = a + eps*(g - a);
+                        b_eps = b + eps*(g - b);
+                        c_eps = c + eps*(g - c);
+
+
+                        valg = feval(input,g(:,1),g(:,2));
+                        vala = feval(input,a_eps(:,1),a_eps(:,2));
+                        valb = feval(input,b_eps(:,1),b_eps(:,2));
+                        valc = feval(input,c_eps(:,1),c_eps(:,2));
+
+                        w = 1/(12*(1-eps)^2);
+                        val = w*(vala + valb + valc) + (1-3*w)*valg;
+                        if size(val,1) == 1
+                                val = ones(N,1)*val;
+                        end
+                    case 'char'
+                        eps = 0.1;
+                        g = obj.centers;
+                        a = obj.nodes(obj.triangles(:,1),:);
+                        b = obj.nodes(obj.triangles(:,2),:);
+                        c = obj.nodes(obj.triangles(:,3),:);
+                        a_eps = a + eps*(g - a);
+                        b_eps = b + eps*(g - b);
+                        c_eps = c + eps*(g - c);
+
+                        x = g(:,1);
+                        y = g(:,2);
+                        valg = eval(input);
+
+                        x = a_eps(:,1);
+                        y = a_eps(:,2);
+                        vala = eval(input);
+
+                        x = b_eps(:,1);
+                        y = b_eps(:,2);
+                        valb = eval(input);
+
+                        x = c_eps(:,1);
+                        y = c_eps(:,2);
+                        valc = eval(input);
+
+                        w = 1/(12*(1-eps)^2);
+                        val = w*(vala + valb + valc) + (1-3*w)*valg;
+                    
+                    case 'cell'
+                        Ncell = length(input);
+                        val = [];
+                        for k = 1 : Ncell
+                            val = [val obj.eval_P0(input{k})];
+                        end
+                    otherwise
+                        error('Input type not recognized.')
+
+                end
+            else
+                val = [];
+                for k = 1 : nargin-1
+                    val = [val obj.eval_P0(varargin{k})];
+                end
+            end
+        end
     end
 end
 
 
+% Local functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+function valout = tensor(valin,order)
+N = size(valin,2);
+n = size(valin,1);
+switch order
+    case -1
+        valout = valin;
+    case 0
+        switch N
+            case 1
+                valout = valin;
+            otherwise
+                error('Unable to constrcut a scalar function from this input.')
+        end
+    case 1
+        switch N
+            case 1
+                valout = valin*[1 1];
+            case 2
+                valout = valin;
+            otherwise
+                error('Unable to constrcut a vector field from this input.')
+        end
 
+    case 2
+        switch N
+            case 1
+                valout = valin*[1 0 0 1];
+            case 2
+                valout = [valin(:,1) zeros(n,2) valin(:,2)];
+            case 3
+                valout = [valin(:,1) valin(:,3) valin(:,3) valin(:,2)];
+            case 4
+                valout = valin;
+            otherwise
+                error('Unable to constrcut a 2nd order tensor field from this input.')
+        end
+
+    case 4
+        switch N
+            case 1
+                I = [1 0 0 1 0 0 0 0 0 0 0 0 1 0 0 1];
+                valout = valin(:,1)*I;
+            case 2
+                I = [1 0 0 1 0 0 0 0 0 0 0 0 1 0 0 1];
+                T = [1 0 0 0 0 0 1 0 0 1 0 0 0 0 0 1];
+                D = [1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1];
+                valout = (valin(:,1))*(I+T) + valin(:,2)*D;
+            case 4
+                s11 = valin(:,1);
+                s12 = valin(:,2);
+                s21 = valin(:,3);
+                s22 = valin(:,4);
+                valout = [s11.*s11 s11.*s21  s21.*s11 s21.*s21 ...
+                    s11.*s12 s11.*s22  s21.*s12 s21.*s22 ...
+                    s12.*s11 s12.*s21  s22.*s11 s22.*s21 ...
+                    s12.*s12 s12.*s22  s22.*s12 s22.*s22 ...
+                    ];
+            case 8
+                s11 = valin(:,1);
+                s12 = valin(:,2);
+                s21 = valin(:,3);
+                s22 = valin(:,4);
+                t11 = valin(:,5);
+                t12 = valin(:,6);
+                t21 = valin(:,7);
+                t22 = valin(:,8);
+
+                valout = [s11.*t11 s11.*t21  s21.*t11 s21.*t21 ...
+                    s11.*t12 s11.*t22  s21.*t12 s21.*t22 ...
+                    s12.*t11 s12.*t21  s22.*t11 s22.*t21 ...
+                    s12.*t12 s12.*t22  s22.*t12 s22.*t22 ...
+                    ];
+
+            case 16
+                valout = valin;
+            otherwise
+                error('Unable to constrcut a 4th order tensor field from this input.')
+        end
+
+    otherwise
+        disp(order)
+        error('Invalid order')
+
+end
+end

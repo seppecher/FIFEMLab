@@ -1,6 +1,6 @@
 classdef Domain
 
-    properties %(SetAccess = private)
+    properties (SetAccess = private)
         nodes
         edges
         poly
@@ -8,21 +8,26 @@ classdef Domain
     end
 
     methods (Access = public)
-
         function obj = Domain(varargin)
-            % DOMAIN object constuctor.
+            % DOMAIN object constuctor
             %
             % A Domain object contains geometrical information on a 2D
             % needed to generate later a Mesh object.
             %
-            % Basic domains:
-            % domain = Domain or domain = Domain('square') defines the unit
-            % square domain.
+            % domain = Domain(nodes) creates a polygonal domain of where
+            % nodes is a Nx2 matirx.
             %
-            % General domain consctuction:
-            % domain = Domain(nodes,edges) where nodes is a Nx2 matrix of N
-            % nodes positions and edges is a Px1 cell defining the domain
-            % boundary edges.
+            % domain = Domain(nodes,edges) creates a general domain where
+            % the edges are specified in a Px1 cell. See doc_domain.mlx for
+            % more details. 
+            %
+            % domain = Domain('square') or domain = Domain('square',size)
+            % defines a square domain.
+            % 
+            % domain = Domain('disc') or domain = Domain('disc',size)
+            % defines a disc domain.
+            %
+            % Documentation: doc_domain.mlx or doc_domain.md
             
 
             % Default domain
@@ -164,12 +169,11 @@ classdef Domain
 
             end
         end
-
         function disp(obj)
             % DISP method: display informations contained in the Domain
             % object.
             disp('Domain object')
-            disp(['area = ' num2str(obj.area)]);
+            
 
             Ne = size(obj.edges,1);
             if Ne <= 50 % Full description
@@ -203,8 +207,9 @@ classdef Domain
                 disp(['Edges number = ' num2str(length(obj.edges))]);
             end
             disp(' ')
+            disp(['area = ' num2str(obj.area)]);
+            disp(' ')
         end
-
         function plot(obj,varargin)
             % PLOT method: draw the Domain object.
             %
@@ -274,8 +279,7 @@ classdef Domain
             hold off
 
         end
-        
-        function [c,obj2] = simplify(obj,h)
+        function [c,obj2] = simplify(obj,h,warn)
             obj2 = obj;
             E = obj.edges;
             E2 = {};
@@ -290,7 +294,7 @@ classdef Domain
                     E2 = [E2 ; edge];
                 end
             end
-            if c
+            if c && warn
                 disp(['warning: ' num2str(c) ' small holes or inclusions have been deleted'])
                 disp(['try Mesh(domain,h,h_bound) with a smaller h_bound value'])
 
@@ -298,9 +302,7 @@ classdef Domain
             end
 
         end
-        
-
-        function [M,Ibound,obj] = geometry_matrix(obj,h)
+        function [M,Ibound,obj] = geometry_matrix(obj,h,warn)
             % GEOMTRY_MATRIX method: build the geometry matrix of the
             % domain. This matrix is needed to create a Mesh object form
             % this domain. Use: 
@@ -308,9 +310,10 @@ classdef Domain
             % [M,Ibound] = obj.MATRIX(h) compile the data contained in the Domain
             % object in a matrix M to be used by initmesh. Ibound contains
             % the indices of the i of boundary edges.
-
-            [c,obj2] = simplify(obj,h);
-
+            if nargin == 2
+                warn = true;
+            end
+            [c,obj2] = simplify(obj,h,warn);
             if c
                 obj = obj2;
             end
@@ -342,10 +345,51 @@ classdef Domain
             end
 
         end
+        function b = eq(obj,obj2)
+            % Test if two domains are indetical
+            b = true;
+            if obj.area ~= obj2.area
+                b = false;
+                return
+            end
+            if size(obj.nodes,1) ~= size(obj2.nodes,1)
+                b = false;
+                return
+            end
+            if size(obj.edges,1) ~= size(obj2.edges,1)
+                b = false;
+                return
+            end
+            if size(obj.poly.Vertices,1) ~= size(obj2.poly.Vertices,1)
+                b = false;
+                return
+            end
+            E = obj.nodes - obj2.nodes;
+            E(isnan(E)) = 0;
+            if sum(abs(E(:)))
+                b = false;
+                return
+            end
+            E = obj.poly.Vertices - obj2.poly.Vertices;
+            E(isnan(E)) = 0;
+            if sum(abs(E(:)))
+                b = false;
+                return
+            end
+
+            h = sqrt(obj.area)/10;
+            M1 = obj.geometry_matrix(h,false);
+            M2 = obj2.geometry_matrix(h,false);
+            E = M2 - M1;
+            if sum(abs(E(:)))
+                b = false;
+                return
+            end
+
+        end
     end
 
-    methods (Access = private) % need Private !
-
+    methods (Access = private) 
         function obj = check_structure(obj)
             % Check the domain structure
             [Ne,dime] = size(obj.edges);
@@ -378,7 +422,6 @@ classdef Domain
             end
 
         end
-
         function plot_edge(obj,i,edgelabels,nodelabels)
             % parameters
             Ndis = 128;
@@ -472,7 +515,6 @@ classdef Domain
 
             end
         end
-
         function [x,y] = discretize_edge(obj,edge,h,Ndis)
             type = edge{3};
             param = edge{4};
@@ -513,7 +555,6 @@ classdef Domain
             end
 
         end
-
         function P = build_poly(obj)
             warning('off');
             Ndis = 256;
@@ -561,7 +602,6 @@ classdef Domain
             P = polyshape(Px,Py);
             warning('on');
         end
-
     end
 end
 
@@ -632,7 +672,6 @@ switch w
         error('Wrong 3rd element of the edge cell.')
 end
 end
-
 function [x,y] = eval_edge(param,t)
 if isfield(param,'xy')
     p = feval(param.xy,t);
@@ -656,7 +695,6 @@ elseif strcmp(wy.class,'function_handle')
     y = feval(expy,t);
 end
 end
-
 function [teq,L,x,y] = iterative_equalizer(t,param)
 [x,y] = eval_edge(param,t);
 L = sqrt(diff(x).^2+diff(y).^2);
@@ -673,7 +711,6 @@ while max(L)/min(L) > 1 + 1e-3
     end
 end
 end
-
 function teq = equalizer(t,x,y)
 N = length(t);
 l_list = sqrt(diff(x).^2+diff(y).^2);
@@ -700,7 +737,6 @@ while n < N
     end
 end
 end
-
 function ph = under_sample(p,h)
 if size(p,1) == 0
     ph = [];
@@ -721,7 +757,6 @@ end
 ph(1,:) = (ph(1,:) + ph(end,:))/2;
 ph = ph(1:end-1,:);
 end
-
 function ph = under_sample2(p,h)
 N = size(p,1);
 ph = p(1,:);

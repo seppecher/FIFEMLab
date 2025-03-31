@@ -29,17 +29,19 @@ domain.disp;
 
 ```matlabTextOutput
 Domain object
-Nodes (4):
+nodes (4):
      0     0
      3     0
      3     3
      0     3
 
-Edges (4):
+edges (4):
 edge 1: from 1 to 2 straight
 edge 2: from 2 to 3 straight
 edge 3: from 3 to 4 straight
 edge 4: from 4 to 1 straight
+ 
+area = 9
  
 ```
 
@@ -59,11 +61,13 @@ domain.disp;
 
 ```matlabTextOutput
 Domain object
-Nodes (1):
+nodes (1):
      3     0
 
-Edges (1):
+edges (1):
 edge 1: from 1 to 1 param
+ 
+area = 28.2715
  
 ```
 
@@ -87,7 +91,7 @@ domain.disp;
 
 ```matlabTextOutput
 Domain object
-Nodes (6):
+nodes (6):
      0     0
      2     0
      2     1
@@ -95,13 +99,15 @@ Nodes (6):
      1     2
      0     2
 
-Edges (6):
+edges (6):
 edge 1: from 1 to 2 straight
 edge 2: from 2 to 3 straight
 edge 3: from 3 to 4 straight
 edge 4: from 4 to 5 straight
 edge 5: from 5 to 6 straight
 edge 6: from 6 to 1 straight
+ 
+area = 3
  
 ```
 
@@ -164,13 +170,15 @@ domain.disp;
 
 ```matlabTextOutput
 Domain object
-Nodes (2):
+nodes (2):
     -1     0
      1     0
 
-Edges (2):
+edges (2):
 edge 1: from 1 to 2 straight
 edge 2: from 2 to 1 param
+ 
+area = 1.5708
  
 ```
 
@@ -272,19 +280,21 @@ domain.disp;
 
 ```matlabTextOutput
 Domain object
-Nodes (5):
+nodes (5):
    -1.0000   -1.0000
 1.0000   -1.0000
 2. 0000    1.0000
    -1.0000    1.0000
     0.5000         0
 
-Edges (5):
+edges (5):
 edge 1: from 1 to 2 straight
 edge 2: from 2 to 3 straight
 edge 3: from 3 to 4 straight
 edge 4: from 4 to 1 straight
 edge 5: from 5 to 5 param, hole
+ 
+area = 3.2147
  
 ```
 
@@ -356,7 +366,7 @@ domain.disp;
 
 ```matlabTextOutput
 Domain object
-Nodes (8):
+nodes (8):
     -3    -1
      3    -1
      3     1
@@ -366,13 +376,15 @@ Nodes (8):
      2    -1
      2     1
 
-Edges (6):
+edges (6):
 edge 1: from 1 to 2 straight
 edge 2: from 2 to 3 straight
 edge 3: from 3 to 4 straight
 edge 4: from 4 to 1 straight
 edge 5: from 5 to 6 straight, internal
 edge 6: from 7 to 8 straight, internal
+ 
+area = 12
  
 ```
 
