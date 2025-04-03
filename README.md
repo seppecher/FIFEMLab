@@ -32,4 +32,3 @@ Please repport any issues and suggestions to laurent.seppecher [at] ec-lyon.fr
 
 ## Author
 Laurent Seppecher 
-
