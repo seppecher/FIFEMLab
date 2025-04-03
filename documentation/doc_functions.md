@@ -14,21 +14,21 @@ P1 functions are continuous in the domain and linear in each triangle.
 ## Table of Contents
 &emsp;[1. Scalar functions](#1-scalar-functions)
  
-&emsp;&emsp;[**1.1 Constant functions**](#-textbf-1-1-constant-functions-)
+&emsp;&emsp;&emsp;[1.1 Constant functions](#1-1-constant-functions)
  
-&emsp;&emsp;[**1.2 Functions defined from an expression in x and y**](#-textbf-1-2-functions-defined-from-an-expression-in-x-and-y-)
+&emsp;&emsp;&emsp;[1.2 Functions defined from an expression in x and y](#1-2-functions-defined-from-an-expression-in-x-and-y)
  
-&emsp;&emsp;[**1.3 Functions defined from a two variables handle function**](#-textbf-1-3-functions-defined-from-a-two-variables-handle-function-)
+&emsp;&emsp;&emsp;[1.3 Functions defined from a two variables handle function](#1-3-functions-defined-from-a-two-variables-handle-function)
  
-&emsp;&emsp;[1.4 Function plots](#1-4-function-plots)
+&emsp;&emsp;&emsp;[1.4 Function plots](#1-4-function-plots)
  
-&emsp;&emsp;[1.5 Complex valued functions](#1-5-complex-valued-functions)
+&emsp;&emsp;&emsp;[1.5 Complex valued functions](#1-5-complex-valued-functions)
  
 &emsp;[2. Vector fields](#2-vector-fields)
  
-&emsp;&emsp;[2.1 Constant vector fields](#2-1-constant-vector-fields)
+&emsp;&emsp;&emsp;[2.1 Constant vector fields](#2-1-constant-vector-fields)
  
-&emsp;&emsp;[**2.2 Variable vector fields**](#-textbf-2-2-variable-vector-fields-)
+&emsp;&emsp;&emsp;[2.2 Variable vector fields](#2-2-variable-vector-fields)
  
 &emsp;[3. Matrix and tensor fields](#3-matrix-and-tensor-fields)
  
@@ -60,13 +60,13 @@ mesh.plot;
 You can now construct constant P0 and P1 scalar functions using the class Mesh methods mesh.P0 and mesh.P1.
 
 
-## **1.1 Constant functions**
+### 1.1 Constant functions
 ```matlab
 uP0 = mesh.P0(3);
 uP1 = mesh.P1(3);
 ```
 
-## **1.2 Functions defined from an expression in x and y**
+### 1.2 Functions defined from an expression in x and y
 
 Write as an expression containting variable names x and y as input:
 
@@ -76,7 +76,7 @@ uP1 = mesh.P1('sin(2*pi*x).*sin(2*pi*y)');
 ```
 
 
-## **1.3 Functions defined from a two variables handle function**
+### 1.3 Functions defined from a two variables handle function
 
 Defines a handle function of two variables and use it as an input 
 
@@ -86,7 +86,7 @@ uP0 = mesh.P0(f);
 uP1 = mesh.P1(f);
 ```
 
-## 1.4 Function plots
+### 1.4 Function plots
 -  using mesh.surf: 
 ```matlab
 mesh.surf(uP0);
@@ -118,7 +118,7 @@ title('P1 function')
 
 ![figure_4.png](doc_functions_media/figure_4.png)
 
-## 1.5 Complex valued functions
+### 1.5 Complex valued functions
 
 A function can have complex values:
 
@@ -133,7 +133,7 @@ mesh.image(u)
 
 A vector field is defined using the class Mesh methods mesh.P0 and mesh.P1. 
 
-## 2.1 Constant vector fields
+### 2.1 Constant vector fields
 ```matlab
 v = mesh.P0(1,3);  % Or equivalently mesh.P0([1;3]) or mesh.P0([1 3])
 mesh.image(v);
@@ -154,7 +154,7 @@ v = mesh.P0(0,'order',1);
 
 defines the null vector field.
 
-## **2.2 Variable vector fields**
+### 2.2 Variable vector fields
 
 In the same manner than scalar functions, we can use either exmpression in x,y or hanlde functions of two variables:
 
