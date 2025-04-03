@@ -14,21 +14,21 @@ P1 functions are continuous in the domain and linear in each triangle.
 ## Table of Contents
 &emsp;[1. Scalar functions](#1-scalar-functions)
  
-&emsp;&emsp;[**1.1 Constant functions**](#-textbf-1-1-constant-functions-)
+&emsp;&emsp;[**1.1 Constant functions**](#-textbf-11-constant-functions-)
  
-&emsp;&emsp;[**1.2 Functions defined from an expression in x and y**](#-textbf-1-2-functions-defined-from-an-expression-in-x-and-y-)
+&emsp;&emsp;[**1.2 Functions defined from an expression in x and y**](#-textbf-12-functions-defined-from-an-expression-in-x-and-y-)
  
-&emsp;&emsp;[**1.3 Functions defined from a two variables handle function**](#-textbf-1-3-functions-defined-from-a-two-variables-handle-function-)
+&emsp;&emsp;[**1.3 Functions defined from a two variables handle function**](#-textbf-13-functions-defined-from-a-two-variables-handle-function-)
  
-&emsp;&emsp;[1.4 Function plots](#1-4-function-plots)
+&emsp;&emsp;[1.4 Function plots](#14-function-plots)
  
-&emsp;&emsp;[1.5 Complex valued functions](#1-5-complex-valued-functions)
+&emsp;&emsp;[1.5 Complex valued functions](#15-complex-valued-functions)
  
 &emsp;[2. Vector fields](#2-vector-fields)
  
-&emsp;&emsp;[2.1 Constant vector fields](#2-1-constant-vector-fields)
+&emsp;&emsp;[2.1 Constant vector fields](#21-constant-vector-fields)
  
-&emsp;&emsp;[**2.2 Variable vector fields**](#-textbf-2-2-variable-vector-fields-)
+&emsp;&emsp;[**2.2 Variable vector fields**](#-textbf-22-variable-vector-fields-)
  
 &emsp;[3. Matrix and tensor fields](#3-matrix-and-tensor-fields)
  
