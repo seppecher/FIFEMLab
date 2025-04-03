@@ -343,7 +343,7 @@ classdef Mesh < handle
                         subplot(N1,N2,n);
                         obj.image_single(u(:,n));
                         clim(ca);
-                        title([s '_{' num2str(n) '})'])
+                        title([s '_{' num2str(n) '}'])
                     end
                 end
             else
@@ -387,7 +387,7 @@ classdef Mesh < handle
                         subplot(N1,N2,n);
                         obj.surf_single(u(:,n));
                         clim(ca);
-                        title([s '_{' num2str(n) '})'])
+                        title([s '_{' num2str(n) '}'])
                     end
                 end
             else
@@ -417,6 +417,10 @@ classdef Mesh < handle
         
         % Integral calculus
         function intu = integral(obj,varargin)
+            if nargin == 1
+                intu = obj.integral(1);
+                return
+            end
             if nargin == 2
                 u = varargin{1};
                 if obj.isP1(u)
@@ -554,6 +558,7 @@ classdef Mesh < handle
             
             M = sparse(I,J,aeiej);
         end
+   
     end
     
     methods (Access = public) % Needs private
@@ -861,7 +866,7 @@ switch order
             case 4
                 valout = valin;
             otherwise
-                error('Unable to constrcut a 2nd order tensor field from this input.')
+                error('Unable to constrcut a matrix field from this input.')
         end
 
     case 4
@@ -908,7 +913,7 @@ switch order
 
     otherwise
         disp(order)
-        error('Invalid order')
+        error('Invalid order: possible values are 0, 1, 2 and 4.')
 
 end
 end
