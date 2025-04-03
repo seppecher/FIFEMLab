@@ -324,11 +324,12 @@ classdef Domain
             for i = 1 : size(E,1)
                 edge = E(i,:);
                 side = edge{5};
+                type = edge{3};
                 [x,y] = obj.discretize_edge(edge,h,inf);
                 x = x';
                 y = y';
                 N = length(x);
-                if N>3 
+                if  strcmp(type,'straight') || N>3
                 switch side
                     case 'L'
                         sideM = [ones(1,N-1) ; zeros(1,N-1)];
@@ -524,7 +525,7 @@ classdef Domain
                     x1 = obj.nodes(edge{1},:);
                     x2 = obj.nodes(edge{2},:);
                     l = sqrt((x2(1)-x1(1)).^2 + (x2(2)-x1(2)).^2);
-                    N = max(floor(l/h)+1,2);
+                    N = max(ceil(l/h)+1,2);
                     N = min(N,Ndis);
                     x = linspace(x1(1),x2(1),N)';
                     y = linspace(x1(2),x2(2),N)';
@@ -539,7 +540,7 @@ classdef Domain
                     [teq,L,x,y] = iterative_equalizer(t,param);
                     if h
                         l = sum(L);
-                        N = 1 + ceil(l/h);
+                        N =   ceil(l/h)+1;
                         teq = interp1(t,teq,linspace(tmin,tmax,N)');
                         [teq,L,x,y] = iterative_equalizer(teq,param);
                     end

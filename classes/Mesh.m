@@ -26,12 +26,10 @@ classdef Mesh < handle
         q_mean              % Mean quality of the mesh
 
         K                   % Default stiffness matrix
+        M                   % Default mass matrix
            
         building_time       % Time used to build the mesh
         memory              % Memory used to store the mesh
-
-        
-
     end
     properties (Access = public) % Needs private
        int1
@@ -201,6 +199,19 @@ classdef Mesh < handle
         
         % Function spaces
         function u = P0(obj,varargin)
+            % P0 method of class Mesh.
+            % 
+            % This method creates P0 functions, vector fields and tensor
+            % fields on the Mesh object.
+            %
+            % Scalar functions:
+            %
+            % mesh.P0(val) creates constant scalar P0 function
+            % mesh.P0(expr) creates a P0 function defined by a char
+            % expression containing variable names x and/or y. 
+            % mesh.P0(f) creates a P0 function defined by an handle function
+            % of two variable of the form f = @(x,y) ...
+
             Nt = obj.Ntriangles;
 
             % Defaut P0 function
@@ -224,11 +235,62 @@ classdef Mesh < handle
                 return
             end
 
-            u = obj.eval_P0(argin);
+            u = obj.eval_P0(argin{1:end});
+            u = tensor(u,order);
+        end
+        function u = P1(obj,varargin)
+            % P1 method of class Mesh.
+            % 
+            % This method creates P1 functions, vector fields and tensor
+            % fields on the Mesh object.
+            %
+            % Scalar functions:
+            %
+            % mesh.P1(val) creates constant scalar P1 function
+            % mesh.P1(expr) creates a P1 function defined by a char
+            % expression containing variable names x and/or y. 
+            % mesh.P1(f) creates a P1 function defined by an handle function
+            % of two variable of the form f = @(x,y) ...
+
+            Np = obj.Nnodes;
+
+            % Defaut P1 function
+            if nargin == 1
+                u = zeros(Np,1);
+                return
+            end
+
+            order = -1;
+            argin = varargin;
+
+            % Check if the order is specified
+            if nargin >= 3 && strcmp(varargin{end-1},'order')
+                order = varargin{end};
+                argin = varargin(1:end-2);
+            end
+            
+            % Default tensors
+            if isempty(argin)
+                u = zeros(Np,2^order);
+                return
+            end
+
+            u = obj.eval_P1(argin{1:end});
             u = tensor(u,order);
         end
         function b = isP0(obj,u,order)
+            % isP0 method of class Mesh.
+            % 
+            % obj.isP0(u) checks if u is formated as a P0 function, vector
+            % field or tensor field.
+            %
+            % obj.isP0(u,ord) checks if u is formated as a P0 tensor field 
+            % of order ord.
             b = true;
+            if ~isa(u,'double')
+                b = false;
+                return
+            end
             [Nl,Nc] = size(u);
             Nt = obj.Ntriangles;
             if Nl ~= Nt
@@ -239,11 +301,165 @@ classdef Mesh < handle
                 b = false;
             end
         end
+        function b = isP1(obj,u,order)
+            % isP1 method of class Mesh.
+            % 
+            % obj.isP1(u) checks if u is formated as a P1 function, vector
+            % field or tensor field.
+            %
+            % obj.isP1(u,ord) checks if u is formated as a P1 tensor field 
+            % of order ord.
+            b = true;
+            if ~isa(u,'double')
+                b = false;
+                return
+            end
+            [Nl,Nc] = size(u);
+            Nn = obj.Nnodes;
+            if Nl ~= Nn
+                b = false;
+                return
+            end
+            if nargin == 3 && Nc ~= 2^order
+                b = false;
+            end
+        end
+
+        % Function plots
+        function image(obj,u,ca)
+            if nargin == 2
+                ca = 'auto';
+            end
+            Nc = size(u,2);
+            s = inputname(2);
+            if isreal(u)
+                if Nc == 1
+                    obj.image_single(u);
+                    clim(ca);
+                else
+                    N1 = floor(sqrt(Nc));
+                    N2 = ceil(Nc/N1);
+                    for n = 1 : Nc
+                        subplot(N1,N2,n);
+                        obj.image_single(u(:,n));
+                        clim(ca);
+                        title([s '_{' num2str(n) '})'])
+                    end
+                end
+            else
+                if Nc == 1
+                    subplot 121
+                    obj.image_single(real(u));
+                    clim(ca);
+                    title(['Re(' s ')'])
+                    subplot 122
+                    obj.image_single(imag(u));
+                    clim(ca);
+                    title(['Im(' s ')'])
+                else
+                    for n = 1 : Nc
+                        subplot(Nc,2,2*n-1)
+                        obj.image_single(real(u(:,n)));
+                        clim(ca);
+                        title(['Re(' s '_{' num2str(n) '})'])
+                        subplot(Nc,2,2*n)
+                        obj.image_single(imag(u(:,n)));
+                        clim(ca)
+                        title(['Im(' s '_{' num2str(n) '})'])
+                    end
+                end
+            end
+        end
+        function surf(obj,u,ca)
+            if nargin == 2
+                ca = 'auto';
+            end
+            Nc = size(u,2);
+            s = inputname(2);
+            if isreal(u)
+                if Nc == 1
+                    obj.surf_single(u);
+                    clim(ca);
+                else
+                    N1 = floor(sqrt(Nc));
+                    N2 = ceil(Nc/N1);
+                    for n = 1 : Nc
+                        subplot(N1,N2,n);
+                        obj.surf_single(u(:,n));
+                        clim(ca);
+                        title([s '_{' num2str(n) '})'])
+                    end
+                end
+            else
+                if Nc == 1
+                    subplot 121
+                    obj.surf_single(real(u));
+                    clim(ca);
+                    title(['Re(' s ')'])
+                    subplot 122
+                    obj.surf_single(imag(u));
+                    clim(ca);
+                    title(['Im(' s ')'])
+                else
+                    for n = 1 : Nc
+                        subplot(Nc,2,2*n-1)
+                        obj.surf_single(real(u(:,n)));
+                        clim(ca);
+                        title(['Re(' s '_{' num2str(n) '})'])
+                        subplot(Nc,2,2*n)
+                        obj.surf_single(imag(u(:,n)));
+                        clim(ca)
+                        title(['Im(' s '_{' num2str(n) '})'])
+                    end
+                end
+            end
+        end
+        
+        % Integral calculus
+        function intu = integral(obj,varargin)
+            if nargin == 2
+                u = varargin{1};
+                if obj.isP1(u)
+                    n = size(u,2);
+                    intu = zeros(1,n);
+                    Nn = obj.Nnodes;
+                    v = obj.M*ones(Nn,1);
+                    for k = 1 : n
+                        intu(k) = v'*u(:,k);
+                    end
+                    return
+                end
+                if ~obj.isP0(u)
+                    u = obj.P0(u);
+                end
+            else
+                u = obj.P0(varargin);
+            end
+            n = size(u,2);
+            intu = sum(u.*(obj.int1*ones(1,n)));
+        end
 
         % Finite element matrices
         function K = stiffness(obj,a)
+            % stiffness method of class Mesh.
+            % 
+            % This method builds the stiffness matrix of the P1 Finite
+            % Element basis:
+            %
+            % K_ij = int_Omega a grad(e_j).grad(e_i)
+            %
+            %
+            % mesh.stiffness(a) where a is a P0 matrix field or could be
+            % interpreted as a P0 matrix field.
+            %
+            % mesh.stiffness is equivalent to mesh.stiffness(a) where a is
+            % the P0 identity matrix field.
             if nargin == 1
-                K = obj.stiffness(obj.P0(1,'order',2));
+                K = obj.K;
+                return
+            end
+            if isscalar(a)
+                K = a*obj.K;
                 return
             end
             if ~obj.isP0(a,2)
@@ -273,7 +489,71 @@ classdef Mesh < handle
             geiagej = i1.*(alphai(:,1).*agej(:,1) + alphai(:,2).*agej(:,2));
             K = sparse(I,J,geiagej);          
         end
-       
+        function M = mass(obj,c)
+            % mass method of class Mesh.
+            % 
+            % This method builds the mass matrix of the P1 Finite
+            % Element basis:
+            %
+            % K_ij = int_Omega c e_j.e_i
+            %
+            %
+            % mesh.mass(c) where a is a P0 scalar function or could be
+            % interpreted as a P0 scalar function.
+            %
+            % mesh.mass is equivalent to mesh.mass(1).
+            % 
+            if nargin == 1
+                M = obj.M;
+                return
+            end
+            if isscalar(c)
+                M = c*obj.M;
+                return
+            end
+            if ~obj.isP0(c,0)
+                c = obj.P0(c,'order',0);
+            end
+
+            Nt = obj.Ntriangles;
+            tri = obj.triangles;
+            
+            tp=tri';
+            
+            rep3 = floor((3:9*Nt+2)/3);
+            rep9 = floor((9:9*Nt+8)/9);
+            rep33 = 3*(rep9-1)+1 + mod(0:9*Nt-1,3);
+            
+            Inodes = tp(:);
+            I = Inodes(rep3);
+            J = Inodes(rep33);
+            
+            alphamat = obj.P1_basis(:,[1 2 4 5 7 8]);
+            alpha = reshape(alphamat',2,3*Nt)';
+            alphai = alpha(rep3,:);
+            alphaj = alpha(rep33,:);
+            
+            betamat = obj.P1_basis(:,[3 6 9]);
+            beta = reshape(betamat',1,3*Nt)';
+            betai = beta(rep3,:);
+            betaj = beta(rep33,:);
+            
+            c = c(rep9,:);
+            
+            i1 = obj.int1(rep9);
+            ix = obj.intx(rep9,:);
+            ixx = obj.intxx(rep9,:);
+            
+            V1 = alphai(:,1).*(ixx(:,1).*alphaj(:,1) + ixx(:,2).*alphaj(:,2)) +...
+                alphai(:,2).*(ixx(:,3).*alphaj(:,1) + ixx(:,4).*alphaj(:,2));
+            V2 = (alphai(:,1).*ix(:,1) + alphai(:,2).*ix(:,2)).*betaj +...
+                (alphaj(:,1).*ix(:,1) + alphaj(:,2).*ix(:,2)).*betai;
+            V3 = betai.*betaj.*i1;
+            
+            aeiej = c.*(V1 + V2 + V3);
+            
+            M = sparse(I,J,aeiej);
+        end
     end
     
     methods (Access = public) % Needs private
@@ -319,7 +599,9 @@ classdef Mesh < handle
             obj.h_max = max(d);
             obj.h_mean = mean(d);
             obj.h_std = std(d);
+
             obj.K = obj.stiffness(obj.P0(1,'order',2));
+            obj.M = obj.mass(obj.P0(1,'order',0));
 
             props = properties(obj);
             total_mem = 0;
@@ -453,6 +735,91 @@ classdef Mesh < handle
                     val = [val obj.eval_P0(varargin{k})];
                 end
             end
+        end
+        function val = eval_P1(obj,varargin)
+            N = obj.Nnodes;
+            if nargin == 2
+                input = varargin{1};
+                switch class(input)
+                    case 'double'
+                        [Nl,Nc] = size(input);
+                        if Nc == N
+                            input = input';
+                            Nc = Nl;
+                            Nl = N;
+                        end
+                        switch Nl
+                            case 1
+                                val = ones(N,1)*input;
+                                return
+                            case N
+                                val = input;
+                            otherwise
+                                if Nc == 1
+                                     val = ones(N,1)*input';
+                                     return
+                                else
+                                    error('Enable to construct a P1 function: wrong size of input.')
+                                end
+                        end
+                    case 'function_handle'
+                        p = obj.nodes;
+                        val = feval(input,p(:,1),p(:,2));
+                        if size(val,1) == 1
+                                val = ones(N,1)*val;
+                        end
+                    case 'char'
+                        p = obj.nodes; 
+                        x = p(:,1);
+                        y = p(:,2);
+                        val = eval(input);
+                    case 'cell'
+                        Ncell = length(input);
+                        val = [];
+                        for k = 1 : Ncell
+                            val = [val obj.eval_P1(input{k})];
+                        end
+                    otherwise
+                        error('Input type not recognized.')
+
+                end
+            else
+                val = [];
+                for k = 1 : nargin-1
+                    val = [val obj.eval_P0(varargin{k})];
+                end
+            end
+        end
+        function surf_single(obj,u)
+            N = size(u,1);
+            t = obj.triangles;
+            t = [t ones(length(t),1)];
+            if obj.Ntriangles == N
+                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','flat',...
+           'zdata',u,'zstyle','discontinuous','colorbar','on');
+            elseif  obj.Nnodes == N
+                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','interp',...
+           'zdata',u,'zstyle','continuous','colorbar','on');
+            else
+                error('Wrong data format.')
+            end
+            colormap jet
+            axis image
+        end
+        function image_single(obj,u)
+            N = size(u,1);
+            t = obj.triangles;
+            t = [t ones(length(t),1)];
+            
+            if obj.Ntriangles == N
+                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','flat','colorbar','on');
+            elseif  obj.Nnodes == N
+                pdeplot(obj.nodes',[],t','xydata',u,'colorbar','on');
+            else
+                error('Wrong data format')
+            end
+            colormap jet
+            axis image
         end
     end
 end
