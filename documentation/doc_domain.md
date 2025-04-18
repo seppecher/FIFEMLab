@@ -6,17 +6,17 @@ Domain object
 <a name="beginToc"></a>
 
 ## Table of Contents
-&emsp;&emsp;&emsp;[**1. Basic domains**](#-textbf-1-basic-domains-)
+&emsp;&emsp;&emsp;[**1. Basic domains**](#1-basic-domains)
  
-&emsp;&emsp;&emsp;[**2. Domains with curved edges**](#-textbf-2-domains-with-curved-edges-)
+&emsp;&emsp;&emsp;[**2. Domains with curved edges**](#2-domains-with-curved-edges)
  
-&emsp;&emsp;&emsp;[**3. Domain with holes**](#-textbf-3-domain-with-holes-)
+&emsp;&emsp;&emsp;[**3. Domain with holes**](#3-domain-with-holes)
  
 &emsp;&emsp;&emsp;[**4. Domain with inclusions and internal edges**](#-textbf-4-domain-with-inclusions-and-internal-edges-)
  
-&emsp;&emsp;&emsp;[5. Domain from a binary image](#5-domain-from-a-binary-image)
+&emsp;&emsp;&emsp;[**5. Domain from a binary image**](#5-domain-from-a-binary-image)
  
-<a name="endToc"></a>
+<a name="endToc"></a>[]([]([]()))
 
 ### **1. Basic domains**
 
@@ -396,7 +396,7 @@ axis off;
 ![figure_13.png](doc_domain_media/figure_13.png)
 
 
-### 5. Domain from a binary image
+### **5. Domain from a binary image**
 
 It is also possible to create a domain from a binary image. Create first a image matrix which values one inside the domain and zero outside. For exemple:
 

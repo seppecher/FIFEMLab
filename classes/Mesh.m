@@ -224,7 +224,7 @@ classdef Mesh < handle
             argin = varargin;
 
             % Check if the order is specified
-            if nargin >= 3 && strcmp(varargin{end-1},'order')
+            if nargin >= 3 && ischar(varargin{end-1}) && strcmp(varargin{end-1},'order')
                 order = varargin{end};
                 argin = varargin(1:end-2);
             end
@@ -234,9 +234,17 @@ classdef Mesh < handle
                 u = zeros(Nt,2^order);
                 return
             end
-
-            u = obj.eval_P0(argin{1:end});
-            u = tensor(u,order);
+            
+            opt = [];
+            if ischar(argin{1})
+                switch argin{1}
+                    case {'Lame','lame'}
+                        opt = 'lame';
+                        argin = argin(2:end);
+                        order = 4;
+                end
+            end
+            u = obj.map('P0',order,opt,argin);
         end
         function u = P1(obj,varargin)
             % P1 method of class Mesh.
@@ -264,7 +272,7 @@ classdef Mesh < handle
             argin = varargin;
 
             % Check if the order is specified
-            if nargin >= 3 && strcmp(varargin{end-1},'order')
+            if nargin >= 3 && ischar(varargin{end-1}) && strcmp(varargin{end-1},'order')
                 order = varargin{end};
                 argin = varargin(1:end-2);
             end
@@ -275,8 +283,54 @@ classdef Mesh < handle
                 return
             end
 
-            u = obj.eval_P1(argin{1:end});
-            u = tensor(u,order);
+            opt = [];
+            if ischar(argin{1})
+                switch argin{1}
+                    case {'Lame','lame'}
+                        opt = 'lame';
+                        argin = argin(2:end);
+                        order = 4;
+                end
+            end
+            u = obj.map('P1',order,opt,argin);
+        end
+        function u = P0bound(obj,varargin)
+            % P0bound method of class Mesh.
+            % 
+            % This method creates P0 functions, vector fields and tensor
+            % fields defined on the domain boundary. 
+            %
+            % Scalar functions:
+            %
+            % mesh.P0bound(val) creates constant scalar P0 function
+            % mesh.P0bound(expr) creates a P0 function defined by a char
+            % expression containing variable names x and/or y. 
+            % mesh.P0bound(f) creates a P0 function defined by an handle function
+            % of two variable of the form f = @(x,y) ...
+
+            Ne = obj.Nboundary_edges;
+
+            % Defaut P0bound function
+            if nargin == 1
+                u = zeros(Ne,1);
+                return
+            end
+
+            order = -1;
+            argin = varargin;
+
+            % Check if the order is specified
+            if nargin >= 3 && strcmp(varargin{end-1},'order')
+                order = varargin{end};
+                argin = varargin(1:end-2);
+            end
+            
+            % Default tensors
+            if isempty(argin)
+                u = zeros(Nt,2^order);
+                return
+            end
+            u = obj.map('P0bound',order,opt,argin);
         end
         function b = isP0(obj,u,order)
             % isP0 method of class Mesh.
@@ -326,51 +380,66 @@ classdef Mesh < handle
         end
 
         % Function plots
-        function image(obj,u,ca)
+        function image(obj,u,cb)
+            % image method of class Mesh.
+            % 
+            % mesh.image(u) provides a 2D image of a P0 or P1 function (or
+            % vector/tensor field) u.
+            %
+            % mesh.image(u,cb) do the same while fixing the colormap bounds
+            % using cb of the form cb = [cmin cmax].
             if nargin == 2
-                ca = 'auto';
+                cb = 'auto';
             end
             Nc = size(u,2);
             s = inputname(2);
             if isreal(u)
                 if Nc == 1
                     obj.image_single(u);
-                    clim(ca);
+                    clim(cb);
                 else
                     N1 = floor(sqrt(Nc));
                     N2 = ceil(Nc/N1);
                     for n = 1 : Nc
                         subplot(N1,N2,n);
                         obj.image_single(u(:,n));
-                        clim(ca);
+                        clim(cb);
                         title([s '_{' num2str(n) '}'])
+                        drawnow;
                     end
                 end
             else
                 if Nc == 1
                     subplot 121
                     obj.image_single(real(u));
-                    clim(ca);
+                    clim(cb);
                     title(['Re(' s ')'])
                     subplot 122
                     obj.image_single(imag(u));
-                    clim(ca);
+                    clim(cb);
                     title(['Im(' s ')'])
                 else
                     for n = 1 : Nc
                         subplot(Nc,2,2*n-1)
                         obj.image_single(real(u(:,n)));
-                        clim(ca);
+                        clim(cb);
                         title(['Re(' s '_{' num2str(n) '})'])
                         subplot(Nc,2,2*n)
                         obj.image_single(imag(u(:,n)));
-                        clim(ca)
+                        clim(cb)
                         title(['Im(' s '_{' num2str(n) '})'])
                     end
                 end
             end
         end
         function surf(obj,u,ca)
+            % surf method of class Mesh.
+            % 
+            % mesh.surf(u) provides a surface representation of a P0 or P1 
+            % function (or vector/tensor field) u.
+            %
+            % mesh.surf(u,cb) do the same while fixing the colormap bounds
+            % using cb of the form cb = [cmin cmax].
             if nargin == 2
                 ca = 'auto';
             end
@@ -502,11 +571,11 @@ classdef Mesh < handle
             % K_ij = int_Omega c e_j.e_i
             %
             %
-            % mesh.mass(c) where a is a P0 scalar function or could be
+            % mesh.mass(c) where c is a P0 scalar function or could be
             % interpreted as a P0 scalar function.
             %
             % mesh.mass is equivalent to mesh.mass(1).
-            % 
+
             if nargin == 1
                 M = obj.M;
                 return
@@ -558,7 +627,199 @@ classdef Mesh < handle
             
             M = sparse(I,J,aeiej);
         end
-   
+        function F = source(obj,f)
+            % source method of class Mesh.
+            % 
+            % This method builds the source vector F of the P1 Finite
+            % Element basis:
+            %
+            % F_i = int_Omega f e_i
+            %
+            %
+            % mesh.source(f) where f is a P0 scalar function or could be
+            % interpreted as a P0 scalar function.
+
+            if ~obj.isP0(f,0)
+                f = obj.P0(f,'order',0);
+            end
+            Nt = obj.Ntriangles;
+            tri = obj.triangles;
+            tp=tri';
+            rep3 = floor((3:3*Nt+2)/3);
+            
+            I = tp(:);
+            
+            alphamat = obj.P1_basis(:,[1 2 4 5 7 8]);
+            alpha = reshape(alphamat',2,3*Nt)';
+            
+            betamat = obj.P1_basis(:,[3 6 9]);
+            beta = reshape(betamat',1,3*Nt)';
+            
+            f = f(rep3,:);
+            
+            i1 = obj.int1(rep3);
+            ix = obj.intx(rep3,:);
+            
+            fei = f.*(alpha(:,1).*ix(:,1) + alpha(:,2).*ix(:,2) + beta.*i1);
+            F = full(sparse(I,ones(3*Nt,1),fei));
+            
+        end
+        
+        function Mb = boundmass(obj,E,g)
+            Ne = obj.Nboundary_edges;
+            Nn = obj.Nnodes;
+            if size(g,2) ~= 1 || size(g,1)~= Ne
+                error('input 2 must be a P0bound scalar function !');
+            end
+            
+            ebound = obj.edges;
+            
+            im = ismember(ebound(:,3),E);
+            g = g(im,:);
+            e = ebound(im,1:2);
+            
+            x = obj.nodes(:,1);
+            y = obj.nodes(:,2);
+            L = sqrt((x(e(:,2)) - x(e(:,1))).^2 + (y(e(:,2)) - y(e(:,1))).^2);
+            e = e';
+            I = e([1 1 2 2],:);
+            J = e([1 2 1 2],:);
+            
+            V = 1/6*[2;1;1;2]*(L.*g)';
+            Mb = sparse(I,J,V,Nn,Nn);
+        end
+        function Fb = boundsource(obj,E,f)
+             % source method of class Mesh.
+            % 
+            % This method builds the boundary source vector F of the P1 Finite
+            % Element basis:
+            %
+            % F_i = int_Gamma f e_i
+            %
+            %
+            % mesh.boundsource(E,f) where E is the edges list where the condition 
+            % is applied and where f is a P0bound scalar function or could be
+            % interpreted as a P0bound scalar function.
+            Ne = obj.Nboundary_edges;
+            Nn = obj.Nnodes;
+            if size(f,2) ~= 1 || size(f,1)~= Ne
+                disp('MESH.boundsource error : input must be a P0bound scalar function !');
+                Fb = [];
+                return
+            end
+            ebound = obj.boundary_edges;
+            
+            im = ismember(ebound(:,3),E);
+            f = f(im,:);
+            e = ebound(im,1:2);
+            Ne = length(e);
+            x = obj.nodes(:,1);
+            y = obj.nodes(:,2);
+            L = sqrt((x(e(:,2)) - x(e(:,1))).^2 + (y(e(:,2)) - y(e(:,1))).^2);
+            ep = e';
+            
+            I = ep(:);
+            J = ones(2*Ne,1);
+            
+            rep2 = floor((2:2*Ne+1)/2);
+            
+            f = f(rep2,:);
+            
+            fei = f.*L(rep2)/2;
+            Fb = full(sparse(I,J,fei,Nn,1));
+        end
+        
+        % Boundary Conditions
+        function [Mb,Fb,Idir,Vdir] = bc_matrices(obj,bc_list)
+            Nn = obj.Nnodes;
+            if nargin == 1 % Default bc matrices
+                Idir = -1;
+                Vdir = [];
+                Mb = sparse(Nn,Nn);
+                Fb = zeros(Nn,1);
+                return
+            end
+
+            if ~iscell(bc_list{1})
+                bc_list = {bc_list};
+            end
+
+            Nbclist = length(bc_list);
+           
+            e = obj.boundary_edges(:,3);
+            onlyneumann = 1;
+            Idir = [];
+            Vdir = zeros(Nn,1);
+            Mb = sparse(Nn,Nn);
+            Fb = zeros(Nn,1);
+
+            for k = 1 : Nbclist
+                bc = bc_list{k};
+                switch bc{2}
+
+                    case {'dir','Dir','dirichlet','Dirichlet'}
+                        onlyneumann = 0;
+                        ed = bc{1};
+                        g = bc{3};
+                        id = [];
+                        for i = 1 : length(ed)
+                            id=[id ; obj.boundary_edges(e==ed(i),1) ; obj.boundary_edges(e==ed(i),2)];
+                        end
+                    id = unique(id);
+                    Idir = union(Idir,id);
+                    v_dir_k = obj.P1(g,'order',0);
+                    Vdir(id) = v_dir_k(id);
+
+                    case {'neu','Neu','neumann','Neumann'}
+
+                    case {'rob','Rob','robin','Robin'}
+                end
+
+
+                if bc{2} == 0
+                    onlyneumann = 0;
+                    ed = bc{1};
+                    id=[];
+                    for i = 1 : length(ed)
+                        id=[id ; obj.boundary_edges(e==ed(i),1) ; obj.boundary_edges(e==ed(i),2)];
+                    end
+                    id = unique(id);
+                    Idir = union(Idir,id);
+                    v_dir_k = obj.P1(bc{4},0);
+                    Vdir(id) = v_dir_k(id);
+                end
+                if bc{2} == 1
+                    g = obj.P0bound(bc{3});
+                    if sum(abs(g))~=0
+                        onlyneumann = 0;
+                        Mb = Mb + obj.boundmass(bc{1},g);
+                    end
+                    h = obj.P0bound(bc{4},0);
+                    Fb = Fb + obj.boundsource(bc{1},h);
+                    
+                    
+                end
+                
+            end
+            Vdir = Vdir(Idir);
+            if onlyneumann
+                Idir = -1;
+            end
+        end
+        
+        % Main elliptic PDE solver
+        function u = solve(obj,a,b,c,f,bc_list)
+            A = obj.stiffness(a);
+            F = obj.source(f);
+            [Mb,Fb,Id,Vd] = obj.bc_matrices(bc_list);
+            Nd = length(Id);
+            A(Id,:) = 0;
+            A(Id,Id) = speye(Nd,Nd);
+            
+            F(Id) = Vd;
+            u= A\F;
+        end
+
     end
     
     methods (Access = public) % Needs private
@@ -648,55 +909,76 @@ classdef Mesh < handle
                 B(j,:)=N(:)';
             end
         end
-        function val = eval_P0(obj,varargin)
-            N = obj.Ntriangles;
-            if nargin == 2
-                input = varargin{1};
-                switch class(input)
-                    case 'double'
-                        [Nl,Nc] = size(input);
-                        if Nc == N
-                            input = input';
-                            Nc = Nl;
-                            Nl = N;
-                        end
-                        switch Nl
-                            case 1
-                                val = ones(N,1)*input;
-                                return
-                            case N
-                                val = input;
-                            otherwise
-                                if Nc == 1
-                                     val = ones(N,1)*input';
-                                     return
-                                else
-                                    error('Enable to construct a P0 function: wrong size of input.')
-                                end
-                        end
-                    case 'function_handle'
-                        eps = 0.1;
-                        g = obj.centers;
-                        a = obj.nodes(obj.triangles(:,1),:);
-                        b = obj.nodes(obj.triangles(:,2),:);
-                        c = obj.nodes(obj.triangles(:,3),:);
-                        a_eps = a + eps*(g - a);
-                        b_eps = b + eps*(g - b);
-                        c_eps = c + eps*(g - c);
+        
+        function surf_single(obj,u)
+            N = size(u,1);
+            t = obj.triangles;
+            t = [t ones(length(t),1)];
+            if obj.Ntriangles == N
+                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','flat',...
+           'zdata',u,'zstyle','discontinuous','colorbar','on');
+            elseif  obj.Nnodes == N
+                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','interp',...
+           'zdata',u,'zstyle','continuous','colorbar','on');
+            else
+                error('Wrong data format.')
+            end
+            colormap jet
+            % axis image
+        end
+        function image_single(obj,u)
+            N = size(u,1);
+            t = obj.triangles;
+            t = [t ones(length(t),1)];
+            
+            if obj.Ntriangles == N
+                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','flat','colorbar','on');
+            elseif  obj.Nnodes == N
+                pdeplot(obj.nodes',[],t','xydata',u,'colorbar','on');
+            else
+                error('Wrong data format')
+            end
+            colormap jet
+            axis image
+        end
+        function u = eval_fun(obj,space,input)
+            switch space
+                case 'P0'
+                    N = obj.Ntriangles;
+                    eps = 0.1;
+                    g = obj.centers;
+                    a = obj.nodes(obj.triangles(:,1),:);
+                    b = obj.nodes(obj.triangles(:,2),:);
+                    c = obj.nodes(obj.triangles(:,3),:);
+                    a_eps = a + eps*(g - a);
+                    b_eps = b + eps*(g - b);
+                    c_eps = c + eps*(g - c);
 
 
-                        valg = feval(input,g(:,1),g(:,2));
-                        vala = feval(input,a_eps(:,1),a_eps(:,2));
-                        valb = feval(input,b_eps(:,1),b_eps(:,2));
-                        valc = feval(input,c_eps(:,1),c_eps(:,2));
+                    valg = feval(input,g(:,1),g(:,2));
+                    vala = feval(input,a_eps(:,1),a_eps(:,2));
+                    valb = feval(input,b_eps(:,1),b_eps(:,2));
+                    valc = feval(input,c_eps(:,1),c_eps(:,2));
 
-                        w = 1/(12*(1-eps)^2);
-                        val = w*(vala + valb + valc) + (1-3*w)*valg;
-                        if size(val,1) == 1
-                                val = ones(N,1)*val;
-                        end
-                    case 'char'
-                        eps = 0.1;
+                    w = 1/(12*(1-eps)^2);
+                    u = w*(vala + valb + valc) + (1-3*w)*valg;
+                    
+                case 'P1'
+                    N = obj.Nnodes;
+                    p = obj.nodes;
+                    u = feval(input,p(:,1),p(:,2));
+                otherwise
+                    error('Enable to evaluate handle function on this space.')
+            end
+            if size(u,1) == 1
+                u = ones(N,1)*u;
+            end
+        end
+        function u = eval_expr(obj,space,input)
+            switch space
+                case 'P0'
+                    N = obj.Ntriangles;
+                    eps = 0.1;
                         g = obj.centers;
                         a = obj.nodes(obj.triangles(:,1),:);
                         b = obj.nodes(obj.triangles(:,2),:);
@@ -722,131 +1004,97 @@ classdef Mesh < handle
                         valc = eval(input);
 
                         w = 1/(12*(1-eps)^2);
-                        val = w*(vala + valb + valc) + (1-3*w)*valg;
-                    
-                    case 'cell'
-                        Ncell = length(input);
-                        val = [];
-                        for k = 1 : Ncell
-                            val = [val obj.eval_P0(input{k})];
-                        end
-                    otherwise
-                        error('Input type not recognized.')
-
-                end
-            else
-                val = [];
-                for k = 1 : nargin-1
-                    val = [val obj.eval_P0(varargin{k})];
-                end
+                        u = w*(vala + valb + valc) + (1-3*w)*valg;
+                case 'P1'
+                    N = obj.Nnodes;
+                    p = obj.nodes;
+                    x = p(:,1);
+                    y = p(:,2);
+                    u = eval(input);
+                otherwise
+                    error('Enable to evaluate expression on this space.')
+            end
+            if size(u,1) == 1
+                u = ones(N,1)*u;
             end
         end
-        function val = eval_P1(obj,varargin)
-            N = obj.Nnodes;
-            if nargin == 2
+        function u = eval(obj,space,varargin)
+            switch space
+                case 'P0'
+                    N = obj.Ntriangles;
+                case 'P1'
+                    N = obj.Nnodes;
+                case 'P0bound'
+                    N = obj.Nboundary_edges;
+            end
+            n = length(varargin);
+            if n == 1
                 input = varargin{1};
                 switch class(input)
                     case 'double'
-                        [Nl,Nc] = size(input);
-                        if Nc == N
+                        [nl,nc] = size(input);
+                        if nc == N
                             input = input';
-                            Nc = Nl;
-                            Nl = N;
+                            nc = nl;
+                            nl = N;
                         end
-                        switch Nl
+                        switch nl
                             case 1
-                                val = ones(N,1)*input;
+                                u = ones(N,1)*input;
                                 return
                             case N
-                                val = input;
+                                u = input;
+                                return
                             otherwise
-                                if Nc == 1
-                                     val = ones(N,1)*input';
-                                     return
-                                else
-                                    error('Enable to construct a P1 function: wrong size of input.')
-                                end
+                                u = ones(N,1)*reshape(input',1,nc*nl);
+                                return
                         end
                     case 'function_handle'
-                        p = obj.nodes;
-                        val = feval(input,p(:,1),p(:,2));
-                        if size(val,1) == 1
-                                val = ones(N,1)*val;
-                        end
+                        u = obj.eval_fun(space,input);
                     case 'char'
-                        p = obj.nodes; 
-                        x = p(:,1);
-                        y = p(:,2);
-                        val = eval(input);
+                         u = obj.eval_expr(space,input);
                     case 'cell'
                         Ncell = length(input);
-                        val = [];
+                        u = [];
                         for k = 1 : Ncell
-                            val = [val obj.eval_P1(input{k})];
+                            u = [u obj.eval(space,input{k})];
                         end
-                    otherwise
-                        error('Input type not recognized.')
+                        return
+                end
 
+
+            else
+                u = [];
+                for k = 1 : n
+                    u = [u mesh.eval(space,varargin{k})];
                 end
-            else
-                val = [];
-                for k = 1 : nargin-1
-                    val = [val obj.eval_P0(varargin{k})];
-                end
             end
         end
-        function surf_single(obj,u)
-            N = size(u,1);
-            t = obj.triangles;
-            t = [t ones(length(t),1)];
-            if obj.Ntriangles == N
-                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','flat',...
-           'zdata',u,'zstyle','discontinuous','colorbar','on');
-            elseif  obj.Nnodes == N
-                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','interp',...
-           'zdata',u,'zstyle','continuous','colorbar','on');
-            else
-                error('Wrong data format.')
-            end
-            colormap jet
-            axis image
+        function u = map(obj,space,order,opt,varargin)
+            u = obj.eval(space,varargin);
+            u = tensor(u,order,opt);
         end
-        function image_single(obj,u)
-            N = size(u,1);
-            t = obj.triangles;
-            t = [t ones(length(t),1)];
-            
-            if obj.Ntriangles == N
-                pdeplot(obj.nodes',[],t','xydata',u,'xystyle','flat','colorbar','on');
-            elseif  obj.Nnodes == N
-                pdeplot(obj.nodes',[],t','xydata',u,'colorbar','on');
-            else
-                error('Wrong data format')
-            end
-            colormap jet
-            axis image
-        end
+
     end
 end
 
 
 % Local functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function valout = tensor(valin,order)
-N = size(valin,2);
-n = size(valin,1);
+function valout = tensor(valin,order,opt)
+[N,n] = size(valin);
 switch order
     case -1
         valout = valin;
     case 0
-        switch N
+        switch n
             case 1
                 valout = valin;
             otherwise
                 error('Unable to constrcut a scalar function from this input.')
         end
     case 1
-        switch N
+        switch n
             case 1
                 valout = valin*[1 1];
             case 2
@@ -856,11 +1104,11 @@ switch order
         end
 
     case 2
-        switch N
+        switch n
             case 1
                 valout = valin*[1 0 0 1];
             case 2
-                valout = [valin(:,1) zeros(n,2) valin(:,2)];
+                valout = [valin(:,1) zeros(N,2) valin(:,2)];
             case 3
                 valout = [valin(:,1) valin(:,3) valin(:,3) valin(:,2)];
             case 4
@@ -870,7 +1118,7 @@ switch order
         end
 
     case 4
-        switch N
+        switch n
             case 1
                 I = [1 0 0 1 0 0 0 0 0 0 0 0 1 0 0 1];
                 valout = valin(:,1)*I;
